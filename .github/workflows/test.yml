@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, issue-5-3bad9ac8]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node.js ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The issue regression compares the historical CLI with today's CLI.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Check JavaScript syntax
+        run: |
+          for source in *.js experiments/*.js; do
+            node --check "$source"
+          done
