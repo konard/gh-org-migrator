@@ -14,3 +14,4 @@ target
 
 # app logs
 *.log.txt
+ci-logs/
