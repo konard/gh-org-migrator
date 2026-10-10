@@ -43,8 +43,8 @@ async function repositoryExists(repositoryName) {
         `Error checking repository ${updatedName}: ${error.message}`,
       );
       if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
       }
       process.exit(1);
     }
@@ -53,21 +53,26 @@ async function repositoryExists(repositoryName) {
 
 async function createRepository(repo) {
   const updatedName = gitFlicifyRepositoryName(repo.name);
+  const payload = {
+    ownerAlias: TARGET_ORGANIZATION,
+    ownerAliasType: "COMPANY",
+    title: updatedName,
+    alias: updatedName,
+    isPrivate: repo.private,
+    description: repo.description,
+    language: repo.language,
+  };
   try {
     console.log(
       `Creating repository ${updatedName} in organization ${TARGET_ORGANIZATION} on GitFlic...`,
     );
+    if (process.env.GITFLIC_DEBUG === "1") {
+      console.error("Request Payload:");
+      console.error(JSON.stringify(payload, null, 2));
+    }
     const response = await axios.post(
       `${GITFLIC_API_URL}/project`,
-      {
-        ownerAlias: TARGET_ORGANIZATION,
-        ownerAliasType: "COMPANY",
-        title: updatedName,
-        alias: updatedName,
-        isPrivate: repo.private,
-        description: repo.description,
-        language: repo.language,
-      },
+      payload,
       {
         headers: {
           Authorization: `token ${GITFLIC_ACCESS_TOKEN}`,
@@ -80,34 +85,9 @@ async function createRepository(repo) {
   } catch (error) {
     console.error(`Error creating repository ${updatedName}: ${error.message}`);
 
-    // If it's a 422 error, provide more detailed debugging information
-    if (error.response && error.response.status === 422) {
-      console.error('422 Validation Error Details:');
-      console.error('Status:', error.response.status);
-      console.error('Status Text:', error.response.statusText);
-
-      if (error.response.data) {
-        console.error('Response Data:', JSON.stringify(error.response.data, null, 2));
-      }
-
-      console.error('Request Payload:');
-      console.error(JSON.stringify({
-        ownerAlias: TARGET_ORGANIZATION,
-        ownerAliasType: "COMPANY",
-        title: updatedName,
-        alias: updatedName,
-        isPrivate: repo.private,
-        description: repo.description,
-        language: repo.language,
-      }, null, 2));
-
-      // Check for common issues
-      console.error('\nPossible causes:');
-      console.error('- Repository with this name already exists');
-      console.error('- Invalid repository name format');
-      console.error('- Insufficient permissions');
-      console.error('- Organization does not exist or access denied');
-      console.error('- Repository name violates GitFlic naming rules');
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", JSON.stringify(error.response.data, null, 2));
     }
 
     process.exit(1);

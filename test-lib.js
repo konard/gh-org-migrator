@@ -18,15 +18,20 @@ function runTests() {
     // Edge cases
     { input: "123repo", expected: "123repo", description: "Numeric prefix should be preserved" },
     { input: "", expected: "unnamed-repo", description: "Empty string fallback" },
-    { input: "---", expected: "unnamed-repo", description: "Only special characters fallback" },
+    { input: "---", expected: "---", description: "Existing dashes preserved" },
 
-    // Cleanup cases
-    { input: "-repo-", expected: "repo", description: "Leading/trailing dash removal" },
-    { input: "test---repo", expected: "test-repo", description: "Consecutive dash cleanup" },
+    // Valid hyphenated names must not collide with other repositories
+    { input: "-repo-", expected: "-repo-", description: "Leading/trailing dashes preserved" },
+    { input: "test---repo", expected: "test---repo", description: "Consecutive dashes preserved" },
 
     // Valid names (should not change)
     { input: "normal-repo", expected: "normal-repo", description: "Valid name unchanged" },
     { input: "repo_with_underscores", expected: "repo_with_underscores", description: "Underscores preserved" },
+    { input: "123", expected: "123", description: "All numeric name preserved" },
+    { input: "release42", expected: "release42", description: "Numeric suffix preserved" },
+    { input: "Проект_123", expected: "Проект_123", description: "Cyrillic letters and digits preserved" },
+    { input: "UPPERCASE-REPO", expected: "UPPERCASE-REPO", description: "Letter case preserved" },
+    { input: "name..repo", expected: "name--repo", description: "Each unsupported character replaced without collapsing dashes" },
   ];
 
   let passed = 0;
