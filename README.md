@@ -87,6 +87,10 @@ the limits of this validation.
 The code push tests run the real push CLIs against local bare repositories that
 stand in for GitHub and GitFlic. See the
 [issue #1 investigation](experiments/issue-1-investigation.md).
+The issue #2 tests also reproduce rejected pushes and verify branch history
+preservation, conflict handling, and subsequent migrations. Run them separately
+with `node --test experiments/test-push-fix.js`; see the
+[issue #2 investigation](experiments/issue-2-investigation.md).
 
 ## Push issues
 
@@ -110,6 +114,21 @@ node push-code-commits.js > >(tee -a push-code-commits.stdout.log.txt) 2> >(tee 
 
 Empty source repositories have no commits to push, so they are reported as
 empty and skipped.
+
+When Git rejects a branch push with `non-fast-forward` or `fetch first`, the
+retry prompt offers to pull and merge that same branch from the target `origin`.
+Accepting fast-forwards a behind branch or merges divergent histories while
+preserving source and target commits. Later migrations also merge new source
+commits into the local branch when it contains previously migrated target work.
+Merge conflicts and unrelated histories stop the migration; an attempted
+conflicting merge is aborted, and the error must be resolved before rerunning.
+
+To trace Git commands and output, enable simple-git's existing diagnostics
+(disabled by default):
+
+```bash
+DEBUG=simple-git:task:*,simple-git:output:* node push-code-commits.js
+```
 
 ## Push code commits to GitFlic
 

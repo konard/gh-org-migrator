@@ -20,6 +20,8 @@ export function runPushCodeCLI({
   scriptSource,
   repositories = [{ name: "chatgpt-discord-bot" }],
   setup = () => {},
+  imports = [],
+  inspect = () => ({}),
 } = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "push-code-cli-test-"));
   try {
@@ -55,7 +57,8 @@ export function runPushCodeCLI({
       // pull.js clones every repository; an empty one leaves HEAD on an unborn branch.
       git(["clone", "-q", `https://github.com/deep-foundation/${name}.git`, path.join(dataDir, name)]);
     }
-    setup({ directory, git, source, targets });
+    const context = { directory, git, source, targets, dataDir, env };
+    setup(context);
 
     let entrypoint = path.join(repositoryDir, script);
     if (scriptSource) {
@@ -66,6 +69,7 @@ export function runPushCodeCLI({
     }
     const result = spawnSync(process.execPath, [
       "--import", path.join(repositoryDir, "experiments", "fast-timers-fixture.js"),
+      ...imports.flatMap((fixture) => ["--import", path.join(repositoryDir, "experiments", fixture)]),
       entrypoint,
     ], {
       cwd: directory,
@@ -85,7 +89,7 @@ export function runPushCodeCLI({
       githubRefs[name] = refs(targets.github(name));
       gitflicRefs[alias] = refs(targets.gitflic(alias));
     }
-    return { ...result, githubRefs, gitflicRefs };
+    return { ...result, githubRefs, gitflicRefs, ...inspect(context) };
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

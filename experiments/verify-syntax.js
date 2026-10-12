@@ -1,29 +1,10 @@
 #!/usr/bin/env node
 
-// Simple syntax verification test
-async function verifySyntax() {
-  console.log("🔍 Verifying syntax of push-code-commits.js...");
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-  try {
-    // Try to import the module to check for syntax errors
-    const module = await import("../push-code-commits.js");
-
-    // Check if our target function exists
-    if (typeof module.pushAllLocalBranches === 'function') {
-      console.log("✅ pushAllLocalBranches function exists and is callable");
-    }
-
-    if (typeof module.pushCodeChangesForRepository === 'function') {
-      console.log("✅ pushCodeChangesForRepository function exists and is callable");
-    }
-
-    console.log("✅ Module imports successfully - no syntax errors");
-    console.log("✅ Fix implementation verified!");
-
-  } catch (error) {
-    console.error("❌ Syntax error detected:", error.message);
-    process.exit(1);
-  }
-}
-
-verifySyntax();
+// Syntax checking needs neither credentials nor execution of the migration CLI.
+execFileSync(process.execPath, [
+  "--check", fileURLToPath(new URL("../push-code-commits.js", import.meta.url)),
+], { stdio: "inherit" });
+console.log("push-code-commits.js syntax check passed. Run npm test to verify behavior.");

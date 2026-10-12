@@ -12,7 +12,7 @@
   },
   "scripts": {
     "start": "node index.js",
-    "test": "node test-lib.js && node --test experiments/test-gitflic-creation.js experiments/test-push-code-commits.js"
+    "test": "node test-lib.js && node --test experiments/test-gitflic-creation.js experiments/test-push-code-commits.js experiments/test-push-fix.js"
   },
   "dependencies": {
     "@octokit/rest": "^21.0.1",
