@@ -70,13 +70,58 @@ export async function pullAllLocalBranches(repoDir) {
     try {
       await git
         .cwd(repoDir)
-        .pull({ "--ff-only": null, "--strategy-option": "theirs" });
+        .pull("origin", branch, { "--ff-only": null, "--no-rebase": null });
       console.log(`Pulled latest changes for branch: ${branch}`);
     } catch (error) {
       console.error(
         `Error pulling latest changes for branch: ${branch}: ${error.message}`,
       );
+      // A previous target merge can leave the clone ahead of the source. Merge
+      // later source commits too, rather than silently omitting them from pushes.
+      if (/Not possible to fast-forward/i.test(error.message)) {
+        await pullAndMergeOriginBranch(repoDir, branch);
+      }
     }
+  }
+}
+
+// Name the remote branch explicitly; replacing origin removes upstream settings.
+async function pullAndMergeOriginBranch(repoDir, branchName) {
+  const mergeHeadPath = path.resolve(
+    repoDir,
+    (await git.cwd(repoDir).raw(["rev-parse", "--git-path", "MERGE_HEAD"])).trim(),
+  );
+  if (fs.existsSync(mergeHeadPath)) {
+    throw new Error(`Finish the existing merge before retrying branch ${branchName}.`);
+  }
+  if (!(await git.cwd(repoDir).status()).isClean()) {
+    throw new Error(`Commit or stash local changes before retrying branch ${branchName}.`);
+  }
+
+  console.log(`Pulling and merging latest changes from origin/${branchName}...`);
+  try {
+    // Explicitly merge rather than rebase, including when pull.ff=only is configured.
+    await git.cwd(repoDir).pull("origin", branchName, {
+      "--no-rebase": null,
+      "--ff": null,
+      "--no-edit": null,
+    });
+    console.log(`Successfully pulled latest changes for branch: ${branchName}`);
+  } catch (error) {
+    if (fs.existsSync(mergeHeadPath)) {
+      try {
+        await git.cwd(repoDir).raw(["merge", "--abort"]);
+      } catch (abortError) {
+        throw new Error(
+          `Could not synchronize origin/${branchName}: ${error.message}\nCould not abort the merge: ${abortError.message}`,
+          { cause: error },
+        );
+      }
+    }
+    throw new Error(
+      `Could not synchronize origin/${branchName}; push was not retried. Resolve the branch histories before running again.\n${error.message}`,
+      { cause: error },
+    );
   }
 }
 
@@ -108,19 +153,26 @@ export async function pushAllLocalBranches(repoDir) {
         tryAgain = false;
       } catch (error) {
         console.error(
-          `Error pulling latest changes for branch: ${branchName}: ${error.message}`,
+          `Error pushing latest changes for branch: ${branchName}: ${error.message}`,
         );
+        const needsSynchronization =
+          /\[rejected\]\s+\((?:non-fast-forward|fetch first)\)/.test(error.message);
         const { confirm } = await inquirer.prompt([
           {
             type: "confirm",
             name: "confirm",
-            message: `Do you want to try push latest changes to ${branchName} branch again?`,
+            message: needsSynchronization
+              ? `Pull and merge origin/${branchName} before retrying the push?`
+              : `Do you want to try push latest changes to ${branchName} branch again?`,
             default: false,
           },
         ]);
         tryAgain = confirm;
         if (!tryAgain) {
-          process.exit(1);
+          throw error;
+        }
+        if (needsSynchronization) {
+          await pullAndMergeOriginBranch(repoDir, branchName);
         }
       }
     } while (tryAgain);
