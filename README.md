@@ -55,6 +55,39 @@ node push-repositories-to-gitflic.js 2>&1 | tee push-repositories-to-gitflic.log
 node push-repositories-to-gitflic.js > >(tee -a push-repositories-to-gitflic.stdout.log.txt) 2> >(tee -a push-repositories-to-gitflic.stderr.log.txt >&2)
 ```
 
+GitFlic names replace unsupported characters, including dots, with hyphens.
+For example, `deepcase.github.io` becomes `deepcase-github-io`. Digits,
+underscores, existing hyphens, and letter case are preserved. Creation and code
+pushes use the same name transformation.
+
+API failures report the response status and body. To also log creation payloads
+without authentication headers, enable verbose diagnostics:
+
+```bash
+GITFLIC_DEBUG=1 node push-repositories-to-gitflic.js
+```
+
+Verbose payload logging is disabled by default.
+
+## Tests
+
+```bash
+npm ci
+npm test
+node experiments/verify-issue-5.js
+```
+
+The tests run the real GitFlic creation CLI against an offline Axios fixture;
+they use no real credentials and make no remote changes. Full Git history is
+needed to replay the issue-era CLI. The comparison reproduces its dotted-name
+422 and checks the current CLI's normalized request. See the
+[issue #5 investigation](experiments/issue-5-investigation.md) for evidence and
+the limits of this validation.
+
+The code push tests run the real push CLIs against local bare repositories that
+stand in for GitHub and GitFlic. See the
+[issue #1 investigation](experiments/issue-1-investigation.md).
+
 ## Push issues
 
 ```bash
@@ -74,6 +107,9 @@ node push-code-commits.js 2>&1 | tee push-code-commits.log.txt
 ```bash
 node push-code-commits.js > >(tee -a push-code-commits.stdout.log.txt) 2> >(tee -a push-code-commits.stderr.log.txt >&2)
 ```
+
+Empty source repositories have no commits to push, so they are reported as
+empty and skipped.
 
 ## Push code commits to GitFlic
 

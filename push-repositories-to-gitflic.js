@@ -36,12 +36,16 @@ async function repositoryExists(repositoryName) {
     const repository = response.data;
     return repository.alias === updatedName;
   } catch (error) {
-    if (error.status === 404) {
+    if (error.response && error.response.status === 404) {
       return false;
     } else {
       console.error(
         `Error checking repository ${updatedName}: ${error.message}`,
       );
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
       process.exit(1);
     }
   }
@@ -49,21 +53,26 @@ async function repositoryExists(repositoryName) {
 
 async function createRepository(repo) {
   const updatedName = gitFlicifyRepositoryName(repo.name);
+  const payload = {
+    ownerAlias: TARGET_ORGANIZATION,
+    ownerAliasType: "COMPANY",
+    title: updatedName,
+    alias: updatedName,
+    isPrivate: repo.private,
+    description: repo.description,
+    language: repo.language,
+  };
   try {
     console.log(
       `Creating repository ${updatedName} in organization ${TARGET_ORGANIZATION} on GitFlic...`,
     );
+    if (process.env.GITFLIC_DEBUG === "1") {
+      console.error("Request Payload:");
+      console.error(JSON.stringify(payload, null, 2));
+    }
     const response = await axios.post(
       `${GITFLIC_API_URL}/project`,
-      {
-        ownerAlias: TARGET_ORGANIZATION,
-        ownerAliasType: "COMPANY",
-        title: updatedName,
-        alias: updatedName,
-        isPrivate: repo.private,
-        description: repo.description,
-        language: repo.language,
-      },
+      payload,
       {
         headers: {
           Authorization: `token ${GITFLIC_ACCESS_TOKEN}`,
@@ -75,6 +84,12 @@ async function createRepository(repo) {
     return response.data;
   } catch (error) {
     console.error(`Error creating repository ${updatedName}: ${error.message}`);
+
+    if (error.response) {
+      console.error("Response status:", error.response.status);
+      console.error("Response data:", JSON.stringify(error.response.data, null, 2));
+    }
+
     process.exit(1);
   }
 }
