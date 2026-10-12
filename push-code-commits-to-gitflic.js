@@ -55,9 +55,16 @@ async function createLocalTrackingBranches(repoDir) {
   }
 }
 
+// Check whether neither the local clone nor its origin remote has any branch
+async function isEmptyRepository(repoDir) {
+  const remoteBranches = await git.cwd(repoDir).branch(["-r"]);
+  const localBranches = await git.cwd(repoDir).branchLocal();
+  return remoteBranches.all.length <= 0 && localBranches.all.length <= 0;
+}
+
 // Pull all local branches
 async function pullAllLocalBranches(repoDir) {
-  const localBranches = await git.branchLocal();
+  const localBranches = await git.cwd(repoDir).branchLocal();
   for (const branch of localBranches.all) {
     await git.cwd(repoDir).checkout(branch);
     try {
@@ -76,7 +83,7 @@ async function pullAllLocalBranches(repoDir) {
 // Push all local branches
 async function pushAllLocalBranches(repoDir) {
   let branchesAlreadyUpdated = true;
-  const localBranches = await git.branchLocal();
+  const localBranches = await git.cwd(repoDir).branchLocal();
   for (const branchName of localBranches.all) {
     // console.log({ remoteBranchName: branchName })
     await git.cwd(repoDir).checkout(branchName);
@@ -128,6 +135,7 @@ async function pushRepository(repositoryName) {
     console.error(`Repository directory not found: ${repoDir}`);
     process.exit(1);
   }
+  const updatedRepositoryName = gitFlicifyRepositoryName(repositoryName);
   try {
     console.log(
       `Pushing repository ${repositoryName} to organization ${TARGET_ORGANIZATION}...`,
@@ -143,11 +151,16 @@ async function pushRepository(repositoryName) {
 
     await fetchAllBranches(repoDir);
 
+    // Empty repositories have no commits to push, and git refuses to push
+    // nothing ("There is no tracking information", "No refs in common").
+    if (await isEmptyRepository(repoDir)) {
+      console.log(`Repository ${updatedRepositoryName} is empty, nothing to push.`);
+      return;
+    }
+
     await createLocalTrackingBranches(repoDir);
 
     await pullAllLocalBranches(repoDir);
-
-    const updatedRepositoryName = gitFlicifyRepositoryName(repositoryName);
 
     await git.cwd(repoDir).removeRemote("origin");
     await git

@@ -84,6 +84,10 @@ needed to replay the issue-era CLI. The comparison reproduces its dotted-name
 [issue #5 investigation](experiments/issue-5-investigation.md) for evidence and
 the limits of this validation.
 
+The code push tests run the real push CLIs against local bare repositories that
+stand in for GitHub and GitFlic. See the
+[issue #1 investigation](experiments/issue-1-investigation.md).
+
 ## Push issues
 
 ```bash
@@ -103,6 +107,9 @@ node push-code-commits.js 2>&1 | tee push-code-commits.log.txt
 ```bash
 node push-code-commits.js > >(tee -a push-code-commits.stdout.log.txt) 2> >(tee -a push-code-commits.stderr.log.txt >&2)
 ```
+
+Empty source repositories have no commits to push, so they are reported as
+empty and skipped.
 
 ## Push code commits to GitFlic
 
