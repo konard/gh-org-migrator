@@ -11,7 +11,8 @@
     "gh-org-rm-repos": "./remove-repositories.js"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node test-lib.js && node --test experiments/test-gitflic-creation.js"
   },
   "dependencies": {
     "@octokit/rest": "^21.0.1",
